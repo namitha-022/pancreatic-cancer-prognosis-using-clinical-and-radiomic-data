@@ -1,0 +1,51 @@
+.venv/
+venv/
+env/
+ENV/
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+.ipynb_checkpoints/
+
+# ==============================
+# Raw CPTAC-PDA data
+# ==============================
+data/raw/*
+
+# Keep the raw-data folder in the repository
+# but do not upload its contents
+!data/raw/README.md
+
+# ==============================
+# OS generated files
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==============================
+# IDE / editor files
+# ==============================
+.vscode/
+.idea/
+
+# ==============================
+# Python environment / secrets
+# ==============================
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Temporary files
+# ==============================
+*.tmp
+*.temp
+*.log
+
+# ==============================
+# Local test files
+# ==============================
+test_*.csv

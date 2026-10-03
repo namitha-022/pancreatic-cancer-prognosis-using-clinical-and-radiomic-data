@@ -56,16 +56,16 @@ TCIA states that CPTAC subject identifiers are shared across TCIA imaging and th
 
 ```text
 pancreatic-cancer-prognosis/
-│
+
 ├── data/
 │   ├── raw/
 │   │   ├── PDC_clinical_manifest_10032026_200348.csv
 │   │   ├── PDC_clinical_exposure_manifest_10032026_200348.csv
 │   │   ├── PDC_clinical_followup_manifest_10032026_200348.csv
 │   │   └── PDC_clinical_treatment_manifest_10032026_200348.csv
-│   │
-│   └── processed/
-│       └── clinical_survival_clean.csv
+│   └─── processed/
+│       ├── clinical_survival_clean.csv
+│       └── clinical_preprocessed.csv
 │
 ├── src/
 │   ├── 01_inspect_data.py
@@ -74,22 +74,42 @@ pancreatic-cancer-prognosis/
 │   ├── 04_eda.py
 │   ├── 05_kaplan_meier.py
 │   ├── 06_km_by_grade.py
-│   └── 07_cox_model.py
+│   ├── 07_cox_model.py
+│   ├── 08_preprocess_clinical.py
+│   ├── 09_naive_bayes_threshold.py
+│   ├── 10_smote_classification.py
+│   ├── 11_cox_full_analysis.py
+│   ├── 12_logrank_analysis.py
+│   ├── 13_cox_risk_km.py
+│   └── 14_final_results_table.py
 │
 ├── results/
 │   ├── missing_data_report.csv
+│   ├── removed_clinical_features.csv
+│   ├── naive_bayes_threshold_results.csv
+│   ├── smote_classification_results.csv
+│   ├── smote_class_distribution.csv
+│   ├── cox_full_results.csv
+│   ├── clinical_model_summary.csv
+│   ├── cox_proportional_hazards_test.csv
+│   ├── cox_removed_features.csv
+│   ├── logrank_threshold_results.csv
+│   ├── cox_risk_groups.csv
+│   ├── cox_risk_logrank_results.csv
+│   ├── final_clinical_results.csv
+│   ├── final_clinical_model_summary.csv
 │   ├── age_distribution.png
 │   ├── sex_distribution.png
 │   ├── tumor_grade_distribution.png
 │   ├── survival_time_distribution.png
 │   ├── kaplan_meier_overall_survival.png
 │   ├── kaplan_meier_by_tumor_grade.png
-│   └── cox_model_results.csv
+│   ├── kaplan_meier_by_survival_threshold.png
+│   └── kaplan_meier_cox_risk_groups.png
 │
 ├── requirements.txt
 └── README.md
 ```
-
 
 ## Setup
 
@@ -121,7 +141,7 @@ pip install -r requirements.txt
 
 Run the scripts in the following order:
 
-### Inspect clinical data
+### 1. Inspect clinical data
 
 ```bash
 python src/01_inspect_data.py
@@ -129,7 +149,7 @@ python src/01_inspect_data.py
 
 This step is used to inspect the downloaded clinical manifests, understand their columns and identify the variables required for subsequent analysis.
 
-### Clean clinical data
+### 2. Clean clinical data
 
 ```bash
 python src/02_clean_clinical_data.py
@@ -141,7 +161,7 @@ This step cleans the relevant clinical variables and creates:
 data/processed/clinical_survival_clean.csv
 ```
 
-### Analyse missing data
+### 3. Analyse missing data
 
 ```bash
 python src/03_missing_data.py
@@ -153,7 +173,7 @@ Output:
 results/missing_data_report.csv
 ```
 
-### Exploratory data analysis
+### 4. Exploratory data analysis
 
 ```bash
 python src/04_eda.py
@@ -168,7 +188,7 @@ results/tumor_grade_distribution.png
 results/survival_time_distribution.png
 ```
 
-### Overall Kaplan-Meier analysis
+### 5. Overall Kaplan-Meier analysis
 
 ```bash
 python src/05_kaplan_meier.py
@@ -180,7 +200,7 @@ Output:
 results/kaplan_meier_overall_survival.png
 ```
 
-### Kaplan-Meier analysis by tumor grade
+### 6. Kaplan-Meier analysis by tumor grade
 
 ```bash
 python src/06_km_by_grade.py
@@ -192,7 +212,7 @@ Output:
 results/kaplan_meier_by_tumor_grade.png
 ```
 
-### Cox proportional hazards model
+### 7. Cox proportional hazards model
 
 ```bash
 python src/07_cox_model.py
@@ -202,6 +222,142 @@ Output:
 
 ```text
 results/cox_model_results.csv
+```
+
+## 8. Clinical Feature Preprocessing
+
+```bash
+python src/08_preprocess_clinical.py
+```
+
+Prepares clinical features using missing-value handling, categorical encoding and numerical standardization. Completely missing variables are removed.
+
+Output:
+
+```text
+results/removed_clinical_features.csv
+```
+
+## 9. Naive Bayes Survival-Threshold Analysis
+
+```bash
+python src/09_naive_bayes_threshold.py
+```
+
+Tests the candidate survival thresholds:
+
+- 240 days
+- 270 days
+- 300 days
+- 330 days
+- 360 days
+
+Only patients with observed death times are used for this binary threshold-classification stage because censored observations do not provide a confirmed death time.
+
+The current analysis selected **240 days** for the CPTAC-PDA cohort.
+
+Output:
+
+```text
+results/naive_bayes_threshold_results.csv
+```
+
+## 10. SMOTE/SMOTENC Classification
+
+```bash
+python src/10_smote_classification.py
+```
+
+The selected threshold is used for binary classification. SMOTENC is applied only to the training data, and the untouched test set is used for evaluation.
+
+Reported metrics include:
+
+- Accuracy
+- Balanced accuracy
+- Precision
+- Recall
+- F1-score
+- ROC-AUC
+- Confusion matrix
+
+Outputs:
+
+```text
+results/smote_classification_results.csv
+results/smote_class_distribution.csv
+```
+
+## 11. Clinical Cox Proportional Hazards Model
+
+```bash
+python src/11_cox_full_analysis.py
+```
+
+The clinical-only Cox model produces:
+
+- Regression coefficients
+- Hazard ratios
+- 95% confidence intervals
+- p-values
+- Concordance index
+
+Outputs:
+
+```text
+results/cox_full_results.csv
+results/clinical_model_summary.csv
+results/cox_proportional_hazards_test.csv
+results/cox_removed_features.csv
+```
+
+## 12. Log-Rank Analysis Using Survival Threshold
+
+```bash
+python src/12_logrank_analysis.py
+```
+
+Patients are divided using the selected survival threshold and their Kaplan–Meier curves are compared using the log-rank test.
+
+Outputs:
+
+```text
+results/logrank_threshold_results.csv
+results/kaplan_meier_by_survival_threshold.png
+```
+
+Censored observations are retained for this survival analysis.
+
+## 13. Cox-Based Risk Groups
+
+```bash
+python src/13_cox_risk_km.py
+```
+
+A partial-hazard risk score is obtained from the clinical Cox model. Patients are divided into Low Risk and High Risk groups using the median risk score.
+
+Outputs:
+
+```text
+results/cox_risk_groups.csv
+results/cox_risk_logrank_results.csv
+results/kaplan_meier_cox_risk_groups.png
+```
+
+This risk-group analysis is descriptive and is not independent external validation because the risk scores are generated from the same cohort used to fit the model.
+
+## 14. Final Clinical Results Table
+
+```bash
+python src/14_final_results_table.py
+```
+
+Collects the results from the preceding clinical-analysis stages without training another model.
+
+Outputs:
+
+```text
+results/final_clinical_results.csv
+results/final_clinical_model_summary.csv
 ```
 
 ## Survival Analysis

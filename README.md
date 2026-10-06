@@ -15,6 +15,22 @@ The project uses CT/MR imaging to extract quantitative radiomic features from an
 
 Models are evaluated using the concordance index (C-index). Patients can also be separated into high- and low-risk groups and evaluated using Kaplan-Meier curves and a log-rank test.
 
+## Reproducibility status
+
+The committed processed clinical cohort contains **144** patients with usable
+survival data (115 events and 29 censored observations). The clinical pipeline
+has been run successfully on that cohort. The clinical-only penalised Cox model
+uses 143 positive-duration records and has an apparent C-index of 0.680; it is
+exploratory, not external validation. The threshold classifier is also
+exploratory (held-out balanced accuracy 0.417), so it must not be used for
+clinical decision-making.
+
+The repository does **not** contain the raw PDC manifest, images, annotations,
+or a radiomics feature table. Accordingly, no radiomics or combined-model
+performance is claimed. This is intentional: patient-level raw data and large
+imaging files are excluded from version control. See
+[`data/raw/README.md`](data/raw/README.md) for the exact expected inputs.
+
 ## Dataset
 
 ### CPTAC-PDA
@@ -134,8 +150,51 @@ source .venv/bin/activate
 Install the required packages:
 
 ```bash
-pip install -r requirements.txt
+    pip install -r requirements.txt
 ```
+
+## Run the validated clinical analysis
+
+The processed cohort is included, so run these commands from the repository
+root after installation:
+
+```bash
+python src/03_missing_data.py
+python src/04_eda.py
+python src/05_kaplan_meier.py
+python src/06_km_by_grade.py
+python src/07_cox_model.py
+python src/08_preprocess_clinical.py
+python src/09_naive_bayes_threshold.py
+python src/10_smote_classification.py
+python src/11_cox_full_analysis.py
+python src/12_logrank_analysis.py
+python src/13_cox_risk_km.py
+python src/14_final_results_table.py
+```
+
+Scripts 01--02 require the excluded raw PDC manifest. On a headless machine,
+set `MPLBACKEND=Agg` before running plot-producing scripts.
+
+## Run the radiomics and combined-model analysis
+
+1. Download CPTAC-PDA images and the tumour annotations from the linked TCIA
+   resources, then convert a matched image/mask pair for each patient into the
+   same physical space.
+2. Create the manifest described in `data/raw/README.md`.
+3. Extract features and compare models with out-of-fold C-indices:
+
+```bash
+python src/radiomics/01_extract_features.py --manifest data/raw/radiomics_manifest.csv
+python src/radiomics/02_compare_survival_models.py
+```
+
+Install the optional image-processing dependencies first when running feature
+extraction: `pip install -r requirements-radiomics.txt`.
+
+The comparison only includes patients whose clinical identifier matches a
+radiomics row. It writes `results/radiomics_model_comparison.csv`; report the
+mean and standard deviation across folds, rather than training-set performance.
 
 ## Analysis Pipeline
 

@@ -535,6 +535,14 @@ cox_feature_results = (
     )
 )
 
+# ``11_cox_full_analysis.py`` already writes a human-readable
+# ``hazard_ratio`` column in addition to lifelines' ``exp(coef)``.  After the
+# rename above those two columns would otherwise have the same name, which
+# produces an ambiguous final table.
+cox_feature_results = cox_feature_results.loc[
+    :, ~cox_feature_results.columns.duplicated()
+]
+
 
 print(
     cox_feature_results.to_string(

@@ -36,10 +36,15 @@ ID = "Case Submitter ID"
 ROI_REGEX = r"^Pre-Dose PANCREAS - \d+$"  # excludes "SEED POINT", liver, nodes, post-chemo
 
 
-def to_path(dicom_root: Path, file_location: str) -> Path:
-    """TCIA 'File Location' uses Windows separators and a leading '.\\'."""
+def to_path(dicom_roots: list[Path], file_location: str) -> Path:
+    """TCIA 'File Location' uses Windows separators and a leading '.\\'.
+    Tries each root folder and returns the first path that exists."""
     parts = [p for p in file_location.replace("\\", "/").split("/") if p not in ("", ".")]
-    return dicom_root.joinpath(*parts)
+    for root in dicom_roots:
+        candidate = root.joinpath(*parts)
+        if candidate.exists():
+            return candidate
+    return dicom_roots[0].joinpath(*parts)
 
 
 def find_rtstruct_file(folder: Path) -> Path:
@@ -91,7 +96,8 @@ def convert_one(patient: str, ct_dir: Path, rt_file: Path, out_dir: Path) -> tup
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--dicom-root", required=True, type=Path)
+    ap.add_argument("--dicom-root", required=True, type=Path, nargs="+",
+                    help="One or more folders that each contain a CPTAC-PDA folder")
     ap.add_argument("--annotations", type=Path, default=ROOT / "data/raw/imaging/annotation_metadata.csv")
     ap.add_argument("--imaging", type=Path, default=ROOT / "data/raw/imaging/imaging_metadata.csv")
     ap.add_argument("--out", type=Path, default=ROOT / "data/raw/radiomics_nifti")

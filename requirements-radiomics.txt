@@ -1,3 +1,6 @@
-# Install in addition to requirements.txt when running src/radiomics/01_extract_features.py
+# Install in addition to requirements.txt for the radiomics pipeline (src/radiomics/)
 SimpleITK>=2.3,<3
-pyradiomics>=3.0,<4
+pyradiomics>=3.0,<4      # only needed for 01_extract_features.py
+pydicom                  # 00_prepare_radiomics_data.py
+rt-utils                 # 00_prepare_radiomics_data.py
+scipy                    # 01b_extract_features_lite.py

@@ -8,7 +8,7 @@ UE24CS352A machine-learning mini-project on prognosis prediction for pancreatic 
 
 The clinical analysis is complete and reproducible. The committed processed cohort has 144 patients with usable survival data (115 deaths and 29 censored observations).
 
-A radiomics pipeline (CT/RTSTRUCT conversion, feature extraction, cross-validated model comparison) is also included, and its output is committed in `results/radiomics_model_comparison.csv`. Raw clinical manifests, CT/MR images, tumour masks, and the extracted radiomics feature table are **not** committed because they are patient-level or large external data, so the radiomics comparison can only be re-run after you download the images (see [Run the radiomics pipeline](#run-the-radiomics-pipeline)).
+A radiomics pipeline (CT/RTSTRUCT conversion, feature extraction, cross-validated model comparison) is also included. Its outputs are committed in `results/radiomics_model_comparison.csv` (a single 5-fold run) and `results/radiomics_improved_comparison.csv` (5-fold cross-validation repeated 20 times, the main radiomics result). Raw clinical manifests, CT/MR images, tumour masks, and the extracted radiomics feature table are **not** committed because they are patient-level or large external data, so the radiomics comparison can only be re-run after you download the images (see [Run the radiomics pipeline](#run-the-radiomics-pipeline)).
 
 ### Results
 
@@ -18,11 +18,15 @@ A radiomics pipeline (CT/RTSTRUCT conversion, feature extraction, cross-validate
 | Clinical Cox model (all 144 patients) | apparent C-index 0.680 | Exploratory, in-sample; not external validation |
 | Threshold classifier | test balanced accuracy 0.417 | Poor predictive performance; not for clinical use |
 | Cox risk groups | log-rank p = 1.82e-06 | Descriptive in-sample separation only |
-| Clinical-only Cox (imaging subset, 5-fold CV) | mean C-index 0.616 (SD 0.210) | Out-of-fold |
-| Radiomics-only Cox (imaging subset, 5-fold CV) | mean C-index 0.504 (SD 0.147) | No better than chance |
-| Clinical + radiomics Cox (imaging subset, 5-fold CV) | mean C-index 0.649 (SD 0.209) | Small gain over clinical-only, well within fold-to-fold variation |
+| Clinical-only Cox (46-patient imaging subset, 5-fold CV x 20) | mean C-index 0.648 (SD 0.054) | Out-of-fold |
+| Radiomics-only Cox, all 25 features | mean C-index 0.522 (SD 0.040) | No better than chance |
+| Radiomics-only Cox, 3 best features (chosen inside each training fold) | mean C-index 0.559 (SD 0.065) | Close to chance |
+| Clinical + radiomics Cox, all 25 features | mean C-index 0.600 (SD 0.042) | Below clinical-only |
+| Clinical + radiomics Cox, 3 best features | mean C-index 0.620 (SD 0.041) | Below clinical-only; radiomics adds no gain |
 
-**Reading the radiomics results.** The imaging subset is small (only patients with a pre-treatment pancreas contour, a CT series, and clinical survival data; **N = <fill in from the output of `02_compare_survival_models.py`>**), so each CV fold holds roughly 9-10 patients and the fold-level C-indices range from 0.28 to 0.92. Radiomics alone carries no usable prognostic signal here, and the combined model's mean (0.649) is not distinguishable from clinical-only (0.616) given a standard deviation of about 0.21. These numbers should not be read as evidence that radiomics improves prognosis. Note also that the clinical-only CV score (0.616) is lower than the in-sample clinical C-index (0.680), as expected when moving from apparent to out-of-fold performance on a smaller cohort.
+SD is the standard deviation of the mean C-index across the 20 repeats. C-index 0.5 means a random ranking and 1.0 a perfect one.
+
+**Reading the radiomics results.** The imaging subset is small: **N = 46** patients who have a clinical survival record, a pre-treatment CT series and a pre-treatment pancreas contour, so each CV fold holds about nine patients. A single 5-fold run (`02_compare_survival_models.py`, seed 42; clinical 0.616, radiomics 0.504, combined 0.649) suggested a small gain from radiomics, but its fold scores ranged from 0.28 to 0.92 and the gain disappeared once the cross-validation was repeated 20 times (`03_radiomics_improved.py`). The repeated run is therefore the main result: radiomics alone is close to chance, and adding it to the clinical model does not beat the clinical model alone. These numbers should not be read as evidence that radiomics improves prognosis. The clinical-only CV score (0.648) is lower than the in-sample C-index on all patients (0.680), as expected when moving from apparent to out-of-fold performance on a smaller cohort.
 
 ## Data
 
@@ -70,9 +74,11 @@ src/
     README.md                   # Radiomics pipeline details
     15_match_patient.py         # Patient overlap: clinical vs. annotations vs. imaging (see radiomics README)
     00_prepare_radiomics_data.py   # DICOM CT + RTSTRUCT -> NIfTI image/mask + manifest
+    04_check_masks.py              # Overlay PNGs and mask volumes to check the masks
     01_extract_features.py      # PyRadiomics feature extraction
     01b_extract_features_lite.py   # Lightweight extractor (no PyRadiomics needed)
-    02_compare_survival_models.py  # Out-of-fold clinical / radiomics / combined comparison
+    02_compare_survival_models.py  # Single 5-fold clinical / radiomics / combined comparison
+    03_radiomics_improved.py       # Repeated CV with in-fold feature selection (main result)
 requirements.txt
 requirements-radiomics.txt
 ```
@@ -140,22 +146,30 @@ Key outputs include:
 See [src/radiomics/README.md](src/radiomics/README.md) for details. In short:
 
 1. Download CPTAC-PDA CT images and the tumour annotations (RTSTRUCT) from TCIA. Keep the two TCIA metadata CSVs in `data/raw/imaging/` as `annotation_metadata.csv` and `imaging_metadata.csv`.
-2. Convert each CT series and its pancreas contour to NIfTI and write the manifest `data/raw/radiomics_manifest.csv`:
+2. Convert each CT series and its pancreas contour to NIfTI and write the manifest `data/raw/radiomics_manifest.csv`. If the images and annotations are in separate download folders, pass both:
    ```
-   python src/radiomics/00_prepare_radiomics_data.py --dicom-root "D:/TCIA"
+   python src/radiomics/00_prepare_radiomics_data.py --dicom-root "D:/images" "D:/annotations"
    ```
-3. Extract features, using either PyRadiomics or the lightweight extractor (both write `data/processed/radiomics_features.csv`):
+3. (Optional check) Draw the masks over the CT and print their volumes in `results/mask_check/`:
+   ```
+   python src/radiomics/04_check_masks.py
+   ```
+4. Extract features, using either PyRadiomics or the lightweight extractor (both write `data/processed/radiomics_features.csv`):
    ```
    python src/radiomics/01_extract_features.py --manifest data/raw/radiomics_manifest.csv
    # or, without PyRadiomics:
    python src/radiomics/01b_extract_features_lite.py --manifest data/raw/radiomics_manifest.csv
    ```
-4. Compare models:
+5. Compare models with a single 5-fold split:
    ```
    python src/radiomics/02_compare_survival_models.py
    ```
+6. Repeat the comparison 20 times with in-fold feature selection (main result):
+   ```
+   python src/radiomics/03_radiomics_improved.py
+   ```
 
-Step 4 matches patients by `Case Submitter ID`, prints the matched cohort size, and writes `results/radiomics_model_comparison.csv`. It reports 5-fold out-of-fold C-indices (penalised Cox, penalizer 0.2, L1 ratio 0.5) for clinical-only, radiomics-only, and combined models. Imputation, encoding, and constant-feature filtering are fitted on each training fold only. Report the mean and standard deviation, not a training-set C-index.
+Step 5 matches patients by `Case Submitter ID`, prints the matched cohort size, and writes `results/radiomics_model_comparison.csv`. It reports 5-fold out-of-fold C-indices (penalised Cox, penalizer 0.2, L1 ratio 0.5) for clinical-only, radiomics-only, and combined models. Step 6 repeats 5-fold CV 20 times; in each training fold it standardises the features, keeps the 3 radiomic features most associated with survival (ranked by univariate C-index on the training patients only), and fits a ridge-penalised Cox model (penalizer 0.5). It also reports the all-25-feature models as a baseline and writes `results/radiomics_improved_comparison.csv`. In both steps imputation, encoding, and feature selection use training folds only. Report the mean and standard deviation, not a training-set C-index.
 
 ## Survival endpoint and limitations
 
@@ -163,6 +177,8 @@ Step 4 matches patients by `Case Submitter ID`, prints the matched cohort size, 
 - `survival_event = 1` denotes death; `0` denotes right censoring.
 - The clinical Cox and risk-group results are in-sample exploratory analyses.
 - The threshold classifier excludes censored observations because a confirmed time of death is unavailable.
-- The radiomics comparison uses a small subset of the cohort, a single contour per patient (the first `Pre-Dose PANCREAS` ROI), and one 5-fold split (seed 42). With so few events per fold and many candidate features, the estimates are noisy and no conclusion about radiomics should be drawn from them.
+- The radiomics comparison uses a small subset of the cohort (N = 46), one CT series and the first `Pre-Dose PANCREAS` contour per patient, and a custom 25-feature extractor. Even with repeated cross-validation, the estimates are noisy, and no firm conclusion about radiomics should be drawn from them.
+- Five patients with a contour on MR rather than CT were left out, because CT and MR intensities are not comparable. Some CT scans have uneven slice spacing.
+- `04_check_masks.py` flagged six patients whose mean intensity inside the mask is below 0 HU (possibly a mask on fat or air). They were kept in the analysis.
 - Image features are not harmonised across scanners or contrast phases, and the lite extractor does not resample images.
 - This project is for academic research only.

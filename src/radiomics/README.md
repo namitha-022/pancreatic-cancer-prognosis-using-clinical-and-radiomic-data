@@ -27,5 +27,4 @@ Use either 3a or 3b, not both.
 - `00` reads which CT series each contour was drawn on from the contour file and falls back to the largest CT series in the same study. It skips patients without a usable CT and prints why.
 - Only CT is used. Five patients have their contour on MR scans and are left out, because CT and MR intensities cannot be compared.
 - The final cohort is 46 patients with clinical survival data, a CT and a pancreas contour. Intensities are clipped to -150..250 HU and texture uses 25 HU bins. Images are not resampled.
-- `15_match_patient.py` expects the annotation file name set at the top of the script. Change `ANNOTATION_FILE` to `annotation_metadata.csv` if you use the file names above.
 - Raw images, masks, the manifest and the feature table are not committed (patient-level or large data).

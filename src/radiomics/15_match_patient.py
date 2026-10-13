@@ -15,7 +15,7 @@ CLINICAL_FILE = (
 IMAGING_DIR = PROJECT_ROOT / "data" / "raw" / "imaging"
 
 ANNOTATION_FILE = (
-    IMAGING_DIR / "Metadata_Report_CPTAC_PDA_2025_10-20.csv"
+    IMAGING_DIR / "annotation_metadata.csv"
 )
 
 # Change this filename if your second TCIA CSV has a different name.

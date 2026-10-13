@@ -14,9 +14,32 @@ CLINICAL_FILE = (
 
 IMAGING_DIR = PROJECT_ROOT / "data" / "raw" / "imaging"
 
-ANNOTATION_FILE = (
-    IMAGING_DIR / "annotation_metadata.csv"
+# Uses whichever of these annotation files exists in data/raw/imaging/.
+ANNOTATION_FILE = next(
+    (
+        p for p in [
+            IMAGING_DIR / "annotation_metadata.csv",
+            IMAGING_DIR / "Metadata_Report_CPTAC_PDA_2025_10-20.csv",
+        ] if p.exists()
+    ),
+    IMAGING_DIR / "annotation_metadata.csv",
 )
+
+# TCIA metadata CSVs name the patient column differently.
+PATIENT_COLUMNS = [
+    "PatientID",
+    "Patient ID",
+    "Subject ID",
+    "SubjectID",
+    "Case Submitter ID",
+]
+
+
+def find_patient_column(df, label):
+    for col in PATIENT_COLUMNS:
+        if col in df.columns:
+            return col
+    raise ValueError(f"Could not find a patient ID column in the {label} metadata.")
 
 # Change this filename if your second TCIA CSV has a different name.
 IMAGING_METADATA_FILE = IMAGING_DIR / "imaging_metadata.csv"
@@ -74,13 +97,11 @@ print("Annotation shape:", annotation.shape)
 print("\nAnnotation columns:")
 print(annotation.columns.tolist())
 
-if "PatientID" not in annotation.columns:
-    raise ValueError(
-        "Could not find 'PatientID' in annotation metadata."
-    )
+annotation_patient_column = find_patient_column(annotation, "annotation")
+print("\nUsing annotation patient column:", annotation_patient_column)
 
 annotation_ids = set(
-    clean_id(annotation["PatientID"]).dropna()
+    clean_id(annotation[annotation_patient_column]).dropna()
 )
 
 print("\nUnique annotated patients:", len(annotation_ids))
